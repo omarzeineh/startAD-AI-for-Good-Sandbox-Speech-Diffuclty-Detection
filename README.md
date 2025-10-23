@@ -1,97 +1,86 @@
-# Speech Difficulty Detection
-startAD AI for Good — Cohort 2 (Ability Challenge)
+# Speech Difficulty Detection — startAD AI for Good (Cohort 2)
 
-> Web-based AI tool that analyzes short audio clips to flag potential speech and language difficulties.  
-> Built by **Team ADUAA (Team 38)** for the **startAD AI for Good Sandbox — Cohort 2**.
-
----
-
-## Why this matters
-
-Speech-Language Pathologists (SLPs) need faster, more consistent screening tools—current processes are:
-- Slow and manual
-- Prone to human variation
-- Not robust to multilingual, dialect-rich speech
-
-**Goal:** provide a quick, clinic-ready triage tool to support SLPs and parents—not to replace professional diagnosis.  fileciteturn1file0
+> Web-based AI tool to triage short audio clips for potential speech and language difficulties.  
+> Built by **Team ADUAA (Team 38)** for the **startAD AI for Good Sandbox — Cohort 2** (Ability Challenge).
 
 ---
 
-## What we built
+## Overview
 
-A **Bi-directional GRU (BiGRU)** classifier over **log-Mel spectrograms** that predicts **Normal** vs **Dysarthria / Speech Difficulty** from `.wav` audio.  
-The system includes:
+This repository delivers a reproducible prototype for **Speech Difficulty Detection** using a **Bi-directional GRU (BiGRU)** over **log‑Mel spectrograms**. It includes:
 
-- **Model training & evaluation** (PyTorch + Torchaudio)
-- **Flask backend API** for inference
-- **React frontend** with drag‑and‑drop multi-file upload and per‑file confidence scores  
-- **Red highlighting** for non‑normal predictions
+- **Flask backend API** for on-device or server inference
+- **React frontend** with drag‑and‑drop multi-file upload and per-file confidence scores
+- **Training & testing scripts** (PyTorch + Torchaudio) for the BiGRU pipeline
 
-**Pitch highlights**  
-- Dataset (prototype): *Noise-Reduced UASPEECH Dysarthria* (for early experimentation)  
-- Reported per-class metrics from our pitch iteration:  
-  - **Normal:** Precision 1.000, Recall 0.992, F1 0.996  
-  - **Dysarthria:** Precision 0.993, Recall 1.000, F1 0.997  fileciteturn1file0
-
-> These numbers are from an early proof-of-concept stage and will evolve with better protocol, cross-validation, and a regional pediatric dataset.
+Non‑normal predictions are highlighted **in red** on the frontend to aid quick triage. This project supports research and early clinical exploration only—**not** a medical diagnosis tool.
 
 ---
 
-## Repository structure
+## Repository Structure
 
 ```
 .
-├── FlaskBackend_Team38/             # Flask API (GRU/Transformer backends)
-├── ReactFrontend_Team38/            # React app (Vite) with multi-file upload
-├── ModelsTrainingAndTesting_Team38/ # Training/testing scripts (BiGRU)
+├── FlaskBackend_Team38/              # Flask API (BiGRU backend; legacy Transformer available)
+├── ReactFrontend_Team38/             # React (Vite) app
+├── ModelsTrainingAndTesting_Team38/  # BiGRU training & evaluation scripts
 └── README.md
 ```
 
-> If you only need BiGRU, you may remove Transformer-specific files to keep things lean.
+> Tip: If you only use BiGRU, you may safely remove Transformer-specific files to keep the repo lean.
 
 ---
 
-## Quick start
+## Quick Start
 
 ### 1) Backend (Flask + PyTorch)
 
-From `FlaskBackend_Team38/`:
+From `FlaskBackend_Team38/` (Windows PowerShell):
 
 ```bash
-# Windows PowerShell
 py -m venv venv
 . venv/Scripts/activate
 
 # Core deps
-pip install torch torchaudio flask flask-cors soundfile matplotlib
-# (Optional) install CUDA builds of torch/torchaudio if your GPU is supported
+pip install flask flask-cors torch torchaudio soundfile matplotlib
 ```
 
-Run the **BiGRU** backend:
+Start the BiGRU backend:
+
 ```bash
 python GRUBackEnd.py
 ```
-API default: `http://127.0.0.1:5000`
+
+The API listens on `http://127.0.0.1:5000` by default.
+
+> **CUDA (optional):** if you have a supported NVIDIA GPU, install CUDA wheels. For CUDA 11.8 specifically (as used in our environment):  
+> `pip install torch==2.7.1+cu118 torchaudio==2.7.1+cu118 --extra-index-url https://download.pytorch.org/whl/cu118`
 
 ### 2) Frontend (React + Vite)
+
 From `ReactFrontend_Team38/`:
+
 ```bash
 npm install
 npm run dev
 ```
-Open the printed URL (usually `http://127.0.0.1:5173`).
 
-### 3) (Optional) Train / Test
+Open the URL printed by Vite (typically `http://127.0.0.1:5173`). Ensure the Flask backend is running.
+
+### 3) (Optional) Train / Test Models
+
 From `ModelsTrainingAndTesting_Team38/`:
+
 ```bash
-# Train
+# Train BiGRU
 python train_gru_dysarthria.py
 
-# Evaluate / larger test set
+# Evaluate on a bigger test set
 python test_gru_dysarthria.py
 ```
 
-Expected dataset folders:
+Expected dataset layout:
+
 ```
 dataset_root/
   train/{Normal,Dysarthria}
@@ -104,16 +93,16 @@ dataset_root/
 ## API
 
 **POST** `/predict`  
-- `multipart/form-data` with one or more `file` fields (WAV)  
-- Returns JSON with predicted label + confidence per file  
-- CORS enabled for local React
+- Content-Type: `multipart/form-data` with one or more `file` fields (`.wav`)  
+- Returns: JSON with `{file, label, score}` per input file  
+- CORS is enabled for local development
 
-Example response:
+Example:
 ```json
 {
   "results": [
-    {"file": "sample1.wav", "label": "Normal", "score": 0.87},
-    {"file": "sample2.wav", "label": "Dysarthria", "score": 0.93}
+    {"file": "child_01.wav", "label": "Normal", "score": 0.87},
+    {"file": "child_02.wav", "label": "Dysarthria", "score": 0.93}
   ]
 }
 ```
@@ -123,53 +112,68 @@ Example response:
 ## Frontend UX
 
 - Drag & drop multiple files
-- Display per-file confidence
-- **Non-normal** results shown **in red**
-- Ready for integration into clinic workflows (upload > triage > export result)
+- Per‑file confidence scores
+- **Non‑normal** results appear **in red**
+- Built for quick clinic triage and parent‑facing demonstrations
 
 ---
 
-## Go‑to‑Market (from pitch)
+## Model Notes (BiGRU)
 
-- **Initial pilots**: pediatric therapy centers in the UAE (e.g., Ability Pediatric Rehabilitation)  
-- **Business model**: SaaS tiers per volume of patients analyzed  
-- **Expansion path**: UAE → GCC region  fileciteturn1file0
+- Features: **log‑Mel spectrograms** from raw audio
+- Sequence model: **BiGRU** with a lightweight classification head
+- Variable length handling via **packed sequences**
+- Metrics & plots (in evaluation): Accuracy, Confusion Matrix, ROC, PR curves
+
+> The model and protocol are intended for research/education. For clinical use, validate on representative pediatric data under professional oversight.
 
 ---
 
 ## Roadmap
 
-1) **Data & MVP (Weeks 1–4)**: collect regional pediatric audio (with consent), fine‑tune models, ship MVP  
-2) **Validation**: robust protocols, cross‑site evaluation, bias & fairness checks  
-3) **Clinical integration**: reports, consent flows, EMR exports, Arabic/English UI  
-4) **Deployment**: Edge/Cloud variants, privacy-preserving pipelines (on‑prem options)  fileciteturn1file0
+1. **Data & MVP** — collect regional pediatric audio (consented), refine preprocessing, ship a stable MVP  
+2. **Validation** — robust protocols, cross‑site evaluation, bias/fairness checks  
+3. **Integration** — Arabic/English UI, privacy/consent flows, exportable reports  
+4. **Deployment** — cloud and on‑prem options; privacy‑preserving pipelines
 
 ---
 
-## Tech stack
+## Acknowledgments
 
-- **Python**: PyTorch, Torchaudio, Flask
-- **React**: Vite, modern hooks-based UI
-- **Tooling**: Node.js, npm
-
----
-
-## Ethics & responsible use
-
-- This is **not** a medical device and does **not** provide diagnosis.  
-- Use only with proper consent and privacy controls.  
-- Validate on **representative, pediatric, multilingual** datasets before any clinical decisions.
+- Built for the **Ability Pediatric Rehabilitation** challenge under the **startAD AI for Good Sandbox — Cohort 2**  
+- Thanks to organizers, mentors, and partners for guidance and feedback
 
 ---
 
-## Team & acknowledgments
+## License (MIT)
 
-- **Team ADUAA (Team 38)** — startAD AI for Good Sandbox, **Cohort 2**  
-- Built for the **Ability** challenge with mentorship from the program organizers  
-- Thanks to coaches and partners for their guidance  fileciteturn1file0
+```
+MIT License
+
+Copyright (c) 2025 ADUAA/Team-38
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 
-## License
+### Maintainers
 
-Add a license (e.g., MIT/Apache-2.0). Until then, treat this as “source available for research/education.”
+**Team ADUAA (Team 38)** — startAD AI for Good Sandbox, Cohort 2  
+Open an issue in this repo for questions or suggestions.
